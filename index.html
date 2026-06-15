@@ -113,8 +113,6 @@
   .qmeta code{font-size:11px}
   blockquote.has-mnemonic{border-left-color:#f59e0b !important;
     background:rgba(245,158,11,.13) !important}
-  blockquote.has-trap{border-left-color:#ef4444 !important;
-    background:rgba(239,68,68,.10) !important}
   blockquote.has-link{border-left-color:#10b981 !important;
     background:rgba(16,185,129,.10) !important; font-size:12.5px}
   /* ===== 도식 / 전체문항 탭 ===== */
@@ -252,9 +250,9 @@ let SEARCH=[], CATNAME={}, CAT2TOPIC={}, pendingQ=null, currentId=null;
 // 🔗 연계 점프: 같은 토픽이면 바로 열고, 아니면 해당 카테고리로 이동
 function gotoQ(qid){ const topic=CAT2TOPIC[catOf(qid)]; if(!topic) return;
   pendingQ=qid; if(currentId===topic) openPending(); else location.hash='#'+slug(topic); }
-// 블록인용(연계·함정) 안의 Qn-m 텍스트를 클릭 가능한 링크로 변환
+// 블록인용(연계) 안의 Qn-m 텍스트를 클릭 가능한 링크로 변환
 function linkifyRefs(root){
-  root.querySelectorAll('blockquote.has-link, blockquote.has-trap').forEach(bq=>{
+  root.querySelectorAll('blockquote.has-link').forEach(bq=>{
     const tns=[]; const w=document.createTreeWalker(bq, NodeFilter.SHOW_TEXT);
     let n; while(n=w.nextNode()) tns.push(n);
     tns.forEach(tn=>{
@@ -272,6 +270,14 @@ function linkifyRefs(root){
   });
 }
 function esc(s){ return (s||'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+// **X** 강조: 닫는 ** 앞이 부호()이고 뒤에 글자가 붙으면 marked(CommonMark 플랭킹 규칙)가
+// 강조를 인식 못 해 **가 그대로 노출됨. 파싱 전 직접 <strong>으로 치환해 우회한다.
+// 사이에 *가 없는(=[^*]) 쌍만 매칭 → **A(x)**텍스트**B(y)** 인접 강조도 안전. 코드펜스(```)는 보존.
+function boldFix(md){
+  return md.split(/(```[\s\S]*?```)/).map((part,i)=>
+    i%2===1 ? part : part.replace(/\*\*([^*\n]+?)\*\*/g,'<strong>$1</strong>')
+  ).join('');
+}
 function hl(s,q){ s=esc(s); const i=s.toLowerCase().indexOf(q); if(i<0||!q) return s;
   return s.slice(0,i)+'<mark>'+s.slice(i,i+q.length)+'</mark>'+s.slice(i+q.length); }
 function snippet(body,q){ const i=body.toLowerCase().indexOf(q); if(i<0) return esc(body.slice(0,90));
@@ -313,7 +319,6 @@ function enhance(root){
   root.querySelectorAll('blockquote').forEach(bq=>{
     const t=bq.textContent;
     if(t.includes('💡')) bq.classList.add('has-mnemonic');
-    else if(t.includes('함정(❌)')||t.includes('❌')) bq.classList.add('has-trap');
     else if(t.includes('🔗')) bq.classList.add('has-link');
   });
   root.querySelectorAll('p').forEach(p=>{
@@ -445,7 +450,7 @@ async function render(id){
   try{ md = await (await fetch(t.file+'?_='+Date.now())).text(); }
   catch(e){ content.innerHTML='<p class="empty">문서를 불러오지 못했습니다.</p>'; return; }
   // marked → html, then convert mermaid code blocks to <pre class="mermaid">
-  let html = marked.parse(md);
+  let html = marked.parse(boldFix(md));
   const tmp=document.createElement('div'); tmp.innerHTML=html;
   tmp.querySelectorAll('code.language-mermaid').forEach(code=>{
     const pre=document.createElement('pre'); pre.className='mermaid';
