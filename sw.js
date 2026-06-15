@@ -1,6 +1,6 @@
 // 화공안전 3차 도식 — 서비스워커 (오프라인 캐싱)
 // 전략: app shell·콘텐츠는 stale-while-revalidate (캐시 즉시 반환 + 백그라운드 갱신)
-const CACHE = 'viz-v1';
+const CACHE = 'viz-v2';
 const CORE = [
   './', './index.html', './manifest.json', './search-index.json', './app.webmanifest', './icon.svg',
   'https://cdn.jsdelivr.net/npm/marked@12/marked.min.js',
